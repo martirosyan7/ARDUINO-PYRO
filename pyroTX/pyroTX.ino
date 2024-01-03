@@ -1,171 +1,164 @@
-/*
-  Created 2017
-  by AlexGyver
-  AlexGyver Home Labs Inc.
-*/
-#include "Keypad.h"       //библиотека клавиатуры
-#include <SPI.h>          // библиотека для работы с шиной SPI
-#include "nRF24L01.h"     // библиотека радиомодуля
-#include "RF24.h"         // ещё библиотека радиомодуля
+#include "Keypad.h"
+#include <SPI.h>
+#include "nRF24L01.h"
+#include "RF24.h"
 
-RF24 radio(9, 10); // "создать" модуль на пинах 9 и 10 Для Уно
-byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"}; //возможные номера труб
+RF24 radio(9, 10);
+byte address[][6] = {"1Node", "2Node", "3Node", "4Node", "5Node", "6Node"};
 
 byte redLED = 14;
 byte greenLED = 15;
 
-byte crypt_key = 123;    // уникальный ключ для защиты связи
-int check = 111;         // условный код, для обратной связи
+byte crypt_key = 123;
+int check = 111;
 int check_2 = 112;
-byte transm_data[2];     // массив отправляемых данных (уникальный ключ + код кнопки)
+byte transm_data[2];
 boolean check_answer;
 
-const byte ROWS = 4; //4 строки у клавиатуры
-const byte COLS = 3; //три столбца
+const byte ROWS = 4;
+const byte COLS = 3;
 char keys[4][3] = {
   {'1', '2', '3'},
   {'4', '5', '6'},
   {'7', '8', '9'},
   {'*', '0', '#'}
 };
-byte rowPins[ROWS] = {8, 7, 6, 5}; //Подключены строки (4 пина)
-byte colPins[COLS] = {4, 3, 2}; //подключены столбцы (3 пина)
-Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS ); //создать клавиатуру
+byte rowPins[ROWS] = {8, 7, 6, 5};
+byte colPins[COLS] = {4, 3, 2};
+Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 byte flag;
 
 void setup() {
   Serial.begin(9600);
 
-  transm_data[0] = crypt_key;      // задать уникальный ключ для защиты связи
+  transm_data[0] = crypt_key;
 
   pinMode(redLED, OUTPUT);
   pinMode(greenLED, OUTPUT);
-  digitalWrite(greenLED, HIGH);    // зажечь зелёный светодиод
+  digitalWrite(greenLED, HIGH);
 
-  radio.begin(); //активировать модуль
-  radio.setAutoAck(1);         //режим подтверждения приёма, 1 вкл 0 выкл
-  radio.setRetries(0, 15);    //(время между попыткой достучаться, число попыток)
-  radio.enableAckPayload();    //разрешить отсылку данных в ответ на входящий сигнал
-  radio.setPayloadSize(32);     //размер пакета, в байтах
+  radio.begin();
+  radio.setAutoAck(1);
+  radio.setRetries(0, 15);
+  radio.enableAckPayload();
+  radio.setPayloadSize(32);
 
-  radio.openWritingPipe(address[0]);   //мы - труба 0, открываем канал для передачи данных
-  radio.setChannel(0x60);  //выбираем канал (в котором нет шумов!)
+  radio.openWritingPipe(address[0]);
+  radio.setChannel(0x60);
 
-  radio.setPALevel (RF24_PA_MAX); //уровень мощности передатчика. На выбор RF24_PA_MIN, RF24_PA_LOW, RF24_PA_HIGH, RF24_PA_MAX
-  radio.setDataRate (RF24_1MBPS); //скорость обмена. На выбор RF24_2MBPS, RF24_1MBPS, RF24_250KBPS
-  //должна быть одинакова на приёмнике и передатчике!
-  //при самой низкой скорости имеем самую высокую чувствительность и дальность!!
+  radio.setPALevel (RF24_PA_MAX);
+  radio.setDataRate (RF24_1MBPS);
 
-  radio.powerUp(); //начать работу
-  radio.stopListening();  //не слушаем радиоэфир, мы передатчик
+  radio.powerUp();
+  radio.stopListening();
 }
 
 void loop() {
   byte gotByte;
-  char key = keypad.waitForKey();      // ожидать ввод с клавиатуры, принять символ
-  int keyInt = key - '0';              // перевести символ в целочисленный тип
+  char key = keypad.waitForKey();
+  int keyInt = key - '0';
 
-  if (keyInt >= 0 && keyInt <= 9 && flag == 1) {  // если число от 0 до 9 и флаг поднят
-    digitalWrite(greenLED, HIGH);                         // включить зелёный светодиод
-    digitalWrite(redLED, LOW);                            // погасить красный светодиод
-    transm_data[1] = keyInt;                              // на второе место массива ставим нажатую кнопку
-    radio.write(&transm_data, sizeof(transm_data));       // отправить массив по радио
-    delay(70);
-    digitalWrite(greenLED, LOW);                          // погасить зелёный светодиод
-    digitalWrite(redLED, HIGH);                           // зажечь красный светодиод
-
-  }else if (keyInt == 5 && flag == 2) {  // если число от 0 до 9 и флаг поднят
+  if (keyInt >= 0 && keyInt <= 9 && flag == 1) {
     digitalWrite(greenLED, HIGH);
-    digitalWrite(redLED, LOW);                            // погасить красный светодиод
-    transm_data[1] = 11;                              // на второе место массива ставим нажатую кнопку
-    radio.write(&transm_data, sizeof(transm_data));       // отправить массив по радио
+    digitalWrite(redLED, LOW);
+    transm_data[1] = keyInt;
+    radio.write(&transm_data, sizeof(transm_data));
+    delay(70);
+    digitalWrite(greenLED, LOW);
+    digitalWrite(redLED, HIGH);
+
+  }else if (keyInt == 5 && flag == 2) {
+    digitalWrite(greenLED, HIGH);
+    digitalWrite(redLED, LOW);
+    transm_data[1] = 11;
+    radio.write(&transm_data, sizeof(transm_data));
     delay(70);
     flag = 0;
     digitalWrite(greenLED, HIGH);
     digitalWrite(redLED, LOW);
 
-  } else if (key == '*') {                                // если символ *
-    flag = 0;                                             // опустить флаг
+  } else if (key == '*') {
+    flag = 0;
 
-    digitalWrite(redLED, LOW);                            // погасить красный светодиод
-    digitalWrite(greenLED, LOW);                          // погасить зелёный светодиод
-    delay(80);                                           // задержка для эпичности
+    digitalWrite(redLED, LOW);
+    digitalWrite(greenLED, LOW);
+    delay(80);
 
-    transm_data[1] = check;                               // на второе место массива ставим условный код для проверки
-    if ( radio.write(&transm_data, sizeof(transm_data)) ) {  // отправляем 
-      if (!radio.available()) {                           // если не получаем ответ
+    transm_data[1] = check;
+    if ( radio.write(&transm_data, sizeof(transm_data)) ) { 
+      if (!radio.available()) {
         Serial.println("No answer");
-        digitalWrite(greenLED, HIGH);                     // включить зелёный светодиод
+        digitalWrite(greenLED, HIGH);
       } else {
-        while (radio.available() ) {                      // если в ответе что-то есть
-          radio.read( &check_answer, 1);                  // читаем
-          if (check_answer == 1) {                        // если статус = 1 (готов к работе)
-            flag = 1;                                     // поднять флаг готовности к работе
-            digitalWrite(redLED, HIGH);                   // зажечь красный светодиод
+        while (radio.available() ) {
+          radio.read( &check_answer, 1);
+          if (check_answer == 1) {
+            flag = 1;
+            digitalWrite(redLED, HIGH);
             Serial.println("Status OK");
-          } else {                                        // если статус = 0 (акум разряжен)
+          } else {
             Serial.println("Status BAD");
-            for (int i = 0; i < 9; i++) {                 // моргнуть 6 раз зелёным светодиодом
+            for (int i = 0; i < 9; i++) {
               digitalWrite(redLED, HIGH);
               delay(200);
               digitalWrite(redLED, LOW);
               delay(200);
             }
-            digitalWrite(greenLED, HIGH);                 // включить зелёный светодиод при ошибке
+            digitalWrite(greenLED, HIGH);
           }
         }
       }
       
     } else {
-      Serial.println("Sending failed");              // ошибка отправки
-      digitalWrite(greenLED, HIGH);                  // включить зелёный светодиод
+      Serial.println("Sending failed");
+      digitalWrite(greenLED, HIGH);
     }
 
-  }else if (key == '0') {                                // если символ *
-    flag = 0;                                             // опустить флаг
+  }else if (key == '0') {
+    flag = 0;
 
-    digitalWrite(redLED, LOW);                            // погасить красный светодиод
-    digitalWrite(greenLED, LOW);                          // погасить зелёный светодиод
-    delay(80);                                           // задержка для эпичности
+    digitalWrite(redLED, LOW);
+    digitalWrite(greenLED, LOW);
+    delay(80);
 
-    transm_data[1] = check_2;                               // на второе место массива ставим условный код для проверки
-    if ( radio.write(&transm_data, sizeof(transm_data)) ) {  // отправляем 
-      if (!radio.available()) {                           // если не получаем ответ
+    transm_data[1] = check_2;
+    if ( radio.write(&transm_data, sizeof(transm_data)) ) {
+      if (!radio.available()) {
         Serial.println("No answer");
-        digitalWrite(greenLED, HIGH);                     // включить зелёный светодиод
+        digitalWrite(greenLED, HIGH);
       } else {
-        while (radio.available() ) {                      // если в ответе что-то есть
-          radio.read( &check_answer, 1);                  // читаем
-          if (check_answer == 1) {                        // если статус = 1 (готов к работе)
-            flag = 2;                                     // поднять флаг готовности к работе
+        while (radio.available() ) {
+          radio.read( &check_answer, 1);
+          if (check_answer == 1) {
+            flag = 2;
             for(int i = 0; i <= 9; i++) {
               digitalWrite(redLED, LOW);
               delay(50);
               digitalWrite(redLED, HIGH);
               delay(50);
-            }                  // зажечь красный светодиод
+            }
             Serial.println("Status OK");
-          } else {                                        // если статус = 0 (акум разряжен)
+          } else {
             Serial.println("Status BAD");
-            for (int i = 0; i < 9; i++) {                 // моргнуть 6 раз зелёным светодиодом
+            for (int i = 0; i < 9; i++) {
               digitalWrite(redLED, HIGH);
               delay(200);
               digitalWrite(redLED, LOW);
               delay(200);
             }
-            digitalWrite(greenLED, HIGH);                 // включить зелёный светодиод при ошибке
+            digitalWrite(greenLED, HIGH);
           }
         }
       }
       
     } else {
-      Serial.println("Sending failed");              // ошибка отправки
-      digitalWrite(greenLED, HIGH);                  // включить зелёный светодиод
+      Serial.println("Sending failed");
+      digitalWrite(greenLED, HIGH);
     }
 
-  } else if (key == '#') {                        // если символ №
-    flag = 0;                                     // опустить флаг
-    digitalWrite(greenLED, HIGH);                 // зажечь зелёный светодиод
-    digitalWrite(redLED, LOW);                    // погасить красный светодиод
+  } else if (key == '#') {
+    flag = 0;
+    digitalWrite(greenLED, HIGH);
+    digitalWrite(redLED, LOW);
   }
 }
